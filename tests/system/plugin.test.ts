@@ -258,6 +258,16 @@ test('inspect on mvnw error', async (t) => {
       'If the problem persists, collect the output of `' +
       fullCommand +
       '` and contact support@snyk.io\n';
+
+
+    console.log("LOGGING BEGIN\n\n");
+    console.log(error.message);
+    console.log('\n\n\n');
+    console.log(expectedCommand);
+    console.log("\n\nLOGGING END\n\n");
+
+
+
     t.match(
       error.message,
       expectedCommand,
