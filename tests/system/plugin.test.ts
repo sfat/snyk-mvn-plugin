@@ -3,6 +3,7 @@ import * as test from 'tap-only';
 import * as plugin from '../../lib';
 import { readFixtureJSON } from '../file-helper';
 import { legacyPlugin } from '@snyk/cli-interface';
+import * as os from 'os';
 
 const testsPath = path.join(__dirname, '..');
 const fixturesPath = path.join(testsPath, 'fixtures');
@@ -200,6 +201,67 @@ test('inspect on pom with bad dependency', async (t) => {
       error.message,
       'no.such.groupId:no.such.artifactId:jar:1.0.0',
       'should throw expected error and mention the bad dependency',
+    );
+  }
+});
+
+test('inspect on mvn error', async (t) => {
+  const targetFile = path.join(fixturesPath, 'bad', 'pom.xml');
+  const fullCommand = `mvn dependency:tree -DoutputType=dot --file="${targetFile}"`;
+  try {
+    await plugin.inspect('.', targetFile, {
+      dev: true,
+    });
+    t.fail('expected inspect to throw error');
+  } catch (error) {
+    const expectedCommand =
+      '\n\n' +
+      'Please make sure that Apache Maven Dependency Plugin ' +
+      'version 2.2 or above is installed, and that `' +
+      fullCommand +
+      '` executes successfully ' +
+      'on this project.\n\n' +
+      'If the problem persists, collect the output of `' +
+      fullCommand +
+      '` and contact support@snyk.io\n';
+    t.match(
+      error.message,
+      expectedCommand,
+      'should throw expected error showing corresponding maven command',
+    );
+  }
+});
+
+test('inspect on mvnw error', async (t) => {
+  const targetFile = path.join(fixturesPath, 'bad-maven-with-mvnw', 'pom.xml');
+  const isWinLocal = /^win/.test(os.platform());
+  const quoteLocal = isWinLocal ? '"' : "'";
+  const mvnwCommand = isWinLocal ? `mvn.cmd` : 'mvnw';
+  const targetFileMvnw = path.join(fixturesPath, 'bad-maven-with-mvnw');
+  const fullCommand = `${quoteLocal}${targetFileMvnw}/${mvnwCommand}${quoteLocal} dependency:tree -DoutputType=dot --file="${targetFile}"`;
+  try {
+    await plugin.inspect('.', targetFile, {
+      dev: true,
+    });
+    t.fail('expected inspect to throw error');
+  } catch (error) {
+    const mvnwCommandTipMessage =
+      'Currently, you cannot run `mvnw` outside your current directory, you will have to go inside the directory of your project (see: https://github.com/takari/maven-wrapper/issues/133)\n\n';
+    const expectedCommand =
+      '\n\n' +
+      'Please make sure that Apache Maven Dependency Plugin ' +
+      'version 2.2 or above is installed, and that `' +
+      fullCommand +
+      '` executes successfully ' +
+      'on this project.\n\n' +
+      mvnwCommandTipMessage +
+      'If the problem persists, collect the output of `' +
+      fullCommand +
+      '` and contact support@snyk.io\n';
+    t.match(
+      error.message,
+      expectedCommand,
+      'should throw expected error showing corresponding maven command',
     );
   }
 });
